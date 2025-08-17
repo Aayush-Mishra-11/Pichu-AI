@@ -36,7 +36,7 @@ class PichuAI:
         return None
 
     def get_weather(self, city=None):
-        api_key = "8fecf4fec91371b88cdb881c5bb7f42f"
+        api_key = "8fecf4fec91371b88cdb881c5bb7f42f" #Weather API key
         if not city or city.lower() == "my location":
             # Try to get city from IP geolocation
             try:
@@ -136,4 +136,5 @@ def play_specific_song(query):
             os.startfile(os.path.join(music_dir, song))
             return f"Playing {song}"
     return "Sorry, I couldn't find that song."
+
 
