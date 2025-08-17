@@ -36,7 +36,7 @@ def take_command():
 
 
 # --- Main Query Handler ---
-API_KEY = "AIzaSyBvTHlUDojbUvr3V-cuRkFHgyUkrKvgU4E"
+API_KEY = "YOUR API KEY"
 pichu_model = PichuModel(api_key=API_KEY)
 automation = PichuAI(api_key=API_KEY)
 
@@ -198,3 +198,4 @@ def main_cli():
 
 if __name__ == "__main__":
         main_cli()
+
