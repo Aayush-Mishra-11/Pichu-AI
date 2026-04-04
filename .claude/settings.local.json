@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find . -type f \\\\\\(-name *.py -o -name *.html -o -name *.css -o -name *.js -o -name *.md \\\\\\) ! -path ./.venv/* ! -path ./.vscode/*)",
+      "Bash(find . -name \"*.pyc\" -path \"*/__pycache__/*\" -delete)",
+      "Bash(find . -name \"__pycache__\" -type d -exec rm -rf {} +)"
+    ]
+  }
+}

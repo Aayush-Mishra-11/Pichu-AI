@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Pichu AI</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --bg-primary: #18181b;
+            --bg-secondary: #27272a;
+            --bg-card: #1f1f23;
+            --accent: #f59e0b;
+            --accent-hover: #fbbf24;
+            --text-primary: #fafafa;
+            --text-secondary: #a1a1aa;
+            --text-muted: #71717a;
+            --border: #3f3f46;
+            --success: #22c55e;
+            --error: #ef4444;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            height: 100vh;
+            width: 100vw;
+        }
+
+        .light-mode {
+            --bg-primary: #fff7ed;
+            --bg-secondary: #fed7aa;
+            --bg-card: #fffbeb;
+            --accent: #d97706;
+            --accent-hover: #b45309;
+            --text-primary: #1c1917;
+            --text-secondary: #57534e;
+            --text-muted: #a8a29e;
+            --border: #fb923c;
+        }
+
+        .fade-in { animation: fadeInUp 0.5s cubic-bezier(0.4,0,0.2,1) both; }
+        .slide-in { animation: slideInLeft 0.5s cubic-bezier(0.4,0,0.2,1) both; }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: none; }
+        }
+        @keyframes slideInLeft {
+            from { opacity: 0; transform: translateX(-30px); }
+            to { opacity: 1; transform: none; }
+        }
+
+        .voice-pulse {
+            width: 20px; height: 20px;
+            border-radius: 100%;
+            position: relative;
+            box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4);
+            animation: pulse 1.2s infinite cubic-bezier(0.4,0,0.2,1);
+        }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.5); }
+            70% { box-shadow: 0 0 0 10px rgba(245, 158, 11, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+        }
+
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+        .custom-scroll { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+
+        .viz-bar {
+            width: 8px;
+            border-radius: 4px;
+            animation: vizBarAnim 0.8s ease-in-out infinite alternate;
+        }
+        @keyframes vizBarAnim {
+            0% { height: 20px; }
+            100% { height: 60px; }
+        }
+
+        .input-field {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            transition: border-color 0.2s;
+        }
+        .input-field:focus { outline: none; border-color: var(--accent); }
+        .input-field::placeholder { color: var(--text-muted); }
+
+        .btn-accent {
+            background: var(--accent);
+            color: #000;
+            transition: all 0.2s;
+        }
+        .btn-accent:hover { background: var(--accent-hover); transform: scale(1.05); }
+
+        .btn-icon {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            transition: all 0.2s;
+        }
+        .btn-icon:hover {
+            background: var(--bg-card);
+            color: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .spark-canvas {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        .toast-container {
+            position: fixed;
+            bottom: 1.5rem;
+            right: 1.5rem;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .toast {
+            padding: 0.75rem 1.25rem;
+            border-radius: 0.75rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            animation: slideInRight 0.3s ease-out;
+            max-width: 300px;
+        }
+        .toast-success { background: #22c55e; color: #fff; }
+        .toast-error { background: #ef4444; color: #fff; }
+        .toast-info { background: var(--bg-card); border: 1px solid var(--border); color: var(--text-primary); }
+
+        @keyframes slideInRight {
+            from { opacity: 0; transform: translateX(20px); }
+            to { opacity: 1; transform: none; }
+        }
+
+        .loading-dots::after {
+            content: '';
+            animation: dots 1.2s steps(4, end) infinite;
+        }
+        @keyframes dots {
+            0%, 20% { content: ''; }
+            40% { content: '.'; }
+            60% { content: '..'; }
+            80%, 100% { content: '...'; }
+        }
+
+        /* Main Layout */
+        .main-container {
+            display: flex;
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+
+        /* Robot Panel - Right Side */
+        .robot-panel {
+            position: absolute;
+            right: 0;
+            top: 0;
+            width: 50%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            transition: transform 1s cubic-bezier(0.4, 0, 0.2, 1), opacity 1s ease;
+        }
+
+        .robot-panel.animate-from-center {
+            transform: translateX(50%);
+            opacity: 0;
+        }
+
+        .robot-panel.animate-to-right {
+            transform: translateX(0);
+            opacity: 1;
+        }
+
+        .robot-iframe {
+            width: 100%;
+            height: 100%;
+            max-width: 600px;
+            max-height: 600px;
+            border: none;
+        }
+
+        /* Chat Panel - Left Side */
+        .chat-panel {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 50%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            z-index: 20;
+            background: var(--bg-primary);
+            transition: transform 1s cubic-bezier(0.4, 0, 0.2, 1), opacity 1s ease;
+        }
+
+        .chat-panel.animate-from-center {
+            transform: translateX(-50%);
+            opacity: 0;
+        }
+
+        .chat-panel.animate-to-left {
+            transform: translateX(0);
+            opacity: 1;
+        }
+
+        .chat-header {
+            flex-shrink: 0;
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .chat-history {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem 1.5rem;
+        }
+
+        .chat-input-area {
+            flex-shrink: 0;
+            padding: 1rem 1.5rem;
+            border-top: 1px solid var(--border);
+        }
+
+        /* Instructions Panel */
+        .instructions-panel {
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: 400px;
+            max-width: 90vw;
+            height: 100vh;
+            background: var(--bg-card);
+            border-left: 1px solid var(--border);
+            z-index: 100;
+            transform: translateX(100%);
+            transition: transform 0.3s ease-out;
+            overflow-y: auto;
+        }
+        .instructions-panel.open {
+            transform: translateX(0);
+        }
+
+        .instruction-category {
+            border-bottom: 1px solid var(--border);
+            padding: 1rem;
+        }
+        .instruction-category h3 {
+            font-weight: 600;
+            color: var(--accent);
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .instruction-item {
+            padding: 0.375rem 0;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+        }
+        .instruction-item:hover { color: var(--accent); }
+        .instruction-item code {
+            background: var(--bg-secondary);
+            padding: 0.125rem 0.375rem;
+            border-radius: 0.25rem;
+            font-size: 0.8rem;
+        }
+
+        @media (max-width: 900px) {
+            .robot-panel { display: none; }
+            .chat-panel { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <!-- ClickSpark Canvas -->
+    <canvas id="clickSparkCanvas" class="spark-canvas"></canvas>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Robot Panel (Right Side) -->
+        <div id="robotPanel" class="robot-panel animate-from-center">
+            <iframe src="https://my.spline.design/nexbotrobotcharacterconcept-kLwr8f6hgKgaa5gmU6oB00Si"
+                class="robot-iframe"></iframe>
+        </div>
+
+        <!-- Chat Panel (Left Side) -->
+        <div id="chatPanel" class="chat-panel animate-from-center">
+            <!-- Header -->
+            <div class="chat-header">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full flex items-center justify-center" style="background: linear-gradient(135deg, #f59e0b, #d97706);">
+                            <img src="{{ url_for('static', filename='pichu.png') }}" alt="Pichu" class="w-8 h-8 object-contain rounded-full" />
+                        </div>
+                        <div>
+                            <h1 class="text-xl font-semibold" style="color: var(--text-primary);">Pichu</h1>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button id="generateImageBtn" class="btn-icon p-2 rounded-lg flex items-center gap-2 px-3" title="Generate Image">
+                            <i data-lucide="image-plus" class="w-5 h-5"></i>
+                            <span class="text-sm hidden sm:inline">Generate</span>
+                        </button>
+                        <button id="analyzeImageBtn" class="btn-icon p-2 rounded-lg flex items-center gap-2 px-3" title="Analyze Image">
+                            <i data-lucide="scan" class="w-5 h-5"></i>
+                            <span class="text-sm hidden sm:inline">Analyze</span>
+                        </button>
+                        <button id="instructionsBtn" class="btn-icon p-2 rounded-lg flex items-center gap-2 px-3" title="Commands">
+                            <i data-lucide="book-open" class="w-5 h-5"></i>
+                            <span class="text-sm hidden sm:inline">Commands</span>
+                        </button>
+                        <div class="w-px h-6 bg-gray-700 mx-1"></div>
+                        <button id="themeToggle" class="btn-icon p-2 rounded-lg" title="Theme"><i data-lucide="sun" class="w-5 h-5"></i></button>
+                        <button id="sparkToggle" class="btn-icon p-2 rounded-lg" title="Spark"><i data-lucide="sparkles" class="w-5 h-5"></i></button>
+                        <button id="clearChatBtn" class="btn-icon p-2 rounded-lg" title="Clear"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chat History -->
+            <div id="chatHistory" class="chat-history custom-scroll">
+                <div class="fade-in flex items-start gap-3">
+                    <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style="background: linear-gradient(135deg, #f59e0b, #d97706);">
+                        <img src="{{ url_for('static', filename='pichu.png') }}" class="w-6 h-6 object-contain rounded-full" alt="Pichu" />
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="font-semibold text-sm" style="color: var(--accent);">Pichu</span>
+                        </div>
+                        <div class="text-sm leading-relaxed" style="color: var(--text-secondary);">
+                            Hey there! I'm Pichu, your smart assistant. First Message will take a moment to process.
+                        </div>
+                        <div class="flex flex-wrap gap-2 mt-3">
+                            <button class="px-3 py-1.5 rounded-full text-xs cursor-pointer" style="background: var(--bg-secondary); border: 1px solid var(--border); color: var(--text-secondary);" onclick="sendSuggestion('hello')">Say Hello</button>
+                            <button class="px-3 py-1.5 rounded-full text-xs cursor-pointer" style="background: var(--bg-secondary); border: 1px solid var(--border); color: var(--text-secondary);" onclick="sendSuggestion('tell me a joke')">Tell me a Joke</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Input Area -->
+            <div class="chat-input-area">
+                <div id="imagePreviewContainer" class="mb-3 hidden">
+                    <div class="relative inline-block">
+                        <img id="imagePreview" class="w-16 h-16 object-cover rounded-lg border" style="border-color: var(--border);" />
+                        <button id="removeImageBtn" class="absolute -top-2 -right-2 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white" onclick="removeImage()">
+                            <i data-lucide="x" class="w-3 h-3"></i>
+                        </button>
+                    </div>
+                </div>
+                <input type="file" id="imageInput" accept="image/*" class="hidden" />
+                <div class="flex items-center gap-3">
+                    <button id="attachBtn" class="btn-icon p-2 rounded-lg flex-shrink-0"><i data-lucide="paperclip" class="w-5 h-5"></i></button>
+                    <button id="voiceBtn" class="relative p-2.5 rounded-xl flex-shrink-0" style="background: var(--accent);">
+                        <div class="voice-pulse" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);"></div>
+                        <i data-lucide="mic" class="w-5 h-5 text-black relative z-10"></i>
+                    </button>
+                    <input id="chatInput" type="text" class="input-field flex-1 px-4 py-2.5 rounded-xl text-base" placeholder="Type your command..." />
+                    <button id="sendBtn" class="btn-accent p-2.5 rounded-xl flex-shrink-0"><i data-lucide="arrow-up" class="w-5 h-5"></i></button>
+                </div>
+                <div class="flex items-center gap-4 mt-2">
+                    <span id="voiceStatus" class="text-sm font-medium hidden" style="color: var(--accent);"></span>
+                    <span id="fileStatus" class="text-sm font-medium hidden" style="color: var(--success);"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Instructions Panel -->
+    <div id="instructionsPanel" class="instructions-panel">
+        <div class="p-4 border-b" style="border-color: var(--border);">
+            <div class="flex items-center justify-between">
+                <h2 class="text-lg font-semibold" style="color: var(--text-primary);">Commands & Help</h2>
+                <button onclick="hideInstructions()" class="btn-icon p-1 rounded-lg"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+        </div>
+        <div class="instruction-category">
+            <h3><i data-lucide="user" class="w-4 h-4"></i> General</h3>
+            <div class="instruction-item" onclick="sendSuggestion('hello')"><code>hello</code> - Greet</div>
+            <div class="instruction-item" onclick="sendSuggestion('what is your name')"><code>what is your name</code> - Ask name</div>
+            <div class="instruction-item" onclick="sendSuggestion('tell me a joke')"><code>tell me a joke</code> - Joke</div>
+            <div class="instruction-item" onclick="sendSuggestion('tell me a fact')"><code>tell me a fact</code> - Fact</div>
+            <div class="instruction-item" onclick="sendSuggestion('thanks')"><code>thanks</code> - Thanks</div>
+        </div>
+        <div class="instruction-category">
+            <h3><i data-lucide="cloud-sun" class="w-4 h-4"></i> Weather & Time</h3>
+            <div class="instruction-item" onclick="sendSuggestion('weather in Delhi')"><code>weather in [city]</code> - Weather</div>
+            <div class="instruction-item" onclick="sendSuggestion('what time is it')"><code>what time</code> - Time</div>
+            <div class="instruction-item" onclick="sendSuggestion('what is today date')"><code>what date</code> - Date</div>
+        </div>
+        <div class="instruction-category">
+            <h3><i data-lucide="globe" class="w-4 h-4"></i> Web & Search</h3>
+            <div class="instruction-item" onclick="sendSuggestion('open google')"><code>open google</code> - Google</div>
+            <div class="instruction-item" onclick="sendSuggestion('search for AI')"><code>search [query]</code> - Search</div>
+            <div class="instruction-item" onclick="sendSuggestion('open youtube')"><code>open youtube</code> - YouTube</div>
+            <div class="instruction-item" onclick="sendSuggestion('who is Einstein')"><code>who is [person]</code> - Wikipedia</div>
+            <div class="instruction-item" onclick="sendSuggestion('open chatgpt')"><code>open chatgpt</code> - ChatGPT</div>
+        </div>
+        <div class="instruction-category">
+            <h3><i data-lucide="settings" class="w-4 h-4"></i> System Control</h3>
+            <div class="instruction-item" onclick="sendSuggestion('open notepad')"><code>open notepad</code></div>
+            <div class="instruction-item" onclick="sendSuggestion('open calculator')"><code>open calculator</code></div>
+            <div class="instruction-item" onclick="sendSuggestion('open file explorer')"><code>open file explorer</code></div>
+            <div class="instruction-item" onclick="sendSuggestion('open settings')"><code>open settings</code></div>
+            <div class="instruction-item" onclick="sendSuggestion('open brave')"><code>open brave</code> - Browser</div>
+            <div class="instruction-item" onclick="sendSuggestion('open cmd')"><code>open cmd</code> - Terminal</div>
+            <div class="instruction-item" onclick="sendSuggestion('increase volume')"><code>increase volume</code></div>
+            <div class="instruction-item" onclick="sendSuggestion('decrease volume')"><code>decrease volume</code></div>
+            <div class="instruction-item" onclick="sendSuggestion('mute volume')"><code>mute volume</code></div>
+            <div class="instruction-item" onclick="sendSuggestion('increase brightness')"><code>increase brightness</code></div>
+            <div class="instruction-item" onclick="sendSuggestion('decrease brightness')"><code>decrease brightness</code></div>
+            <div class="instruction-item" onclick="sendSuggestion('turn on wifi')"><code>turn on wifi</code></div>
+            <div class="instruction-item" onclick="sendSuggestion('turn off wifi')"><code>turn off wifi</code></div>
+            <div class="instruction-item" onclick="sendSuggestion('turn on bluetooth')"><code>turn on bluetooth</code></div>
+            <div class="instruction-item" onclick="sendSuggestion('turn off bluetooth')"><code>turn off bluetooth</code></div>
+            <div class="instruction-item" onclick="sendSuggestion('shutdown')"><code>shutdown</code> - Shutdown PC</div>
+            <div class="instruction-item" onclick="sendSuggestion('restart')"><code>restart</code> - Restart PC</div>
+            <div class="instruction-item" onclick="sendSuggestion('sleep')"><code>sleep</code> - Sleep PC</div>
+        </div>
+        <div class="instruction-category">
+            <h3><i data-lucide="music" class="w-4 h-4"></i> Music</h3>
+            <div class="instruction-item" onclick="sendSuggestion('play music')"><code>play music</code> - Play songs</div>
+            <div class="instruction-item" onclick="sendSuggestion('next song')"><code>next song</code> - Skip</div>
+            <div class="instruction-item" onclick="sendSuggestion('list of songs')"><code>list of songs</code> - Song list</div>
+            <div class="instruction-item" onclick="sendSuggestion('play')"><code>play [song name]</code> - Play specific</div>
+        </div>
+        <div class="instruction-category" style="background: rgba(245,158,11,0.1); border-radius: 8px; margin: 8px; padding: 12px;">
+            <h3><i data-lucide="image" class="w-4 h-4"></i> Image Features (Special)</h3>
+            <div class="instruction-item" onclick="triggerImageUpload()"><code>Analyze image</code> - Upload & analyze</div>
+            <div class="instruction-item" onclick="showImageGenModal()"><code>Generate image</code> - Create AI image</div>
+            <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 8px;">For image analysis: Click the paperclip icon or "Attach image" to upload a photo, And Image generation will take some a time for model loading only if you are using first time.</p>
+        </div>
+        <div class="instruction-category">
+            <h3><i data-lucide="message-square" class="w-4 h-4"></i> History</h3>
+            <div class="instruction-item" onclick="sendSuggestion('past conversation')"><code>past conversation</code> - History</div>
+        </div>
+    </div>
+
+    <!-- Image Generation Modal -->
+    <div id="imageGenModal" class="fixed inset-0 flex items-center justify-center z-50 hidden" style="background: rgba(24,24,27,0.9);">
+        <div class="rounded-2xl p-6 w-full max-w-lg mx-4" style="background: var(--bg-card); border: 1px solid var(--border);">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-semibold" style="color: var(--text-primary);">Generate Image</h2>
+                <button onclick="hideImageGenModal()" class="btn-icon p-1 rounded-lg"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <textarea id="imageGenPrompt" class="input-field w-full px-4 py-3 rounded-xl h-32 resize-none" placeholder="Describe the image..."></textarea>
+            <div class="flex gap-3 mt-4">
+                <button onclick="hideImageGenModal()" class="btn-icon px-4 py-2 rounded-xl flex-1">Cancel</button>
+                <button class="btn-accent px-4 py-2 rounded-xl flex-1" onclick="generateImage()">Generate</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Voice Visualization -->
+    <div id="voiceViz" class="fixed inset-0 flex items-center justify-center z-50 hidden" style="background: rgba(24,24,27,0.95);">
+        <div class="flex flex-col items-center">
+            <div class="flex gap-2 mb-6">
+                <div class="viz-bar rounded" style="background: var(--accent);"></div>
+                <div class="viz-bar rounded" style="background: var(--accent); animation-delay: 0.2s;"></div>
+                <div class="viz-bar rounded" style="background: var(--accent); animation-delay: 0.4s;"></div>
+                <div class="viz-bar rounded" style="background: var(--accent); animation-delay: 0.1s;"></div>
+                <div class="viz-bar rounded" style="background: var(--accent); animation-delay: 0.3s;"></div>
+            </div>
+            <div id="voiceVizText" class="text-2xl font-bold mb-2" style="color: var(--text-primary);">Listening...</div>
+            <button id="cancelVoiceBtn" class="mt-6 px-6 py-2 rounded-lg btn-icon">Cancel</button>
+        </div>
+    </div>
+
+    <script>
+        const sparkAudioUrl = "{{ url_for('static', filename='audio/spark.mp3') }}";
+    </script>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script>
+        let sparkEnabled = true;
+        let isDarkMode = true;
+        let isListening = false;
+        let recognition = null;
+        let selectedImageFile = null;
+        let sparkAudio = null;
+        let animationStarted = false;
+
+        // Entrance Animation
+        function startEntranceAnimation() {
+            if (animationStarted) return;
+            animationStarted = true;
+            const robot = document.getElementById('robotPanel');
+            const chat = document.getElementById('chatPanel');
+            setTimeout(() => {
+                robot.classList.remove('animate-from-center');
+                robot.classList.add('animate-to-right');
+            }, 100);
+            setTimeout(() => {
+                chat.classList.remove('animate-from-center');
+                chat.classList.add('animate-to-left');
+            }, 100);
+        }
+
+        // Spark Effect
+        function initSpark() {
+            sparkAudio = new Audio(sparkAudioUrl || "/static/audio/spark.mp3");
+            const canvas = document.getElementById('clickSparkCanvas');
+            const ctx = canvas.getContext('2d');
+            function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            let sparks = [];
+            function easeOut(t) { return t * (2 - t); }
+            function draw(now) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                sparks = sparks.filter(s => {
+                    const elapsed = now - s.startTime;
+                    if (elapsed >= 400) return false;
+                    const p = elapsed / 400;
+                    const e = easeOut(p);
+                    const d = e * 20;
+                    const l = 10 * (1 - e);
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(s.x + d * Math.cos(s.angle), s.y + d * Math.sin(s.angle));
+                    ctx.lineTo(s.x + (d + l) * Math.cos(s.angle), s.y + (d + l) * Math.sin(s.angle));
+                    ctx.stroke();
+                    return true;
+                });
+                if (sparks.length > 0) requestAnimationFrame(draw);
+            }
+            document.addEventListener('click', function(e) {
+                if (!sparkEnabled || e.target.closest('#voiceViz') || e.target.closest('#imageGenModal')) return;
+                try { sparkAudio.currentTime = 0; sparkAudio.play().catch(() => {}); } catch(err) {}
+                const x = e.clientX, y = e.clientY, now = performance.now();
+                for (let i = 0; i < 8; i++) sparks.push({ x, y, angle: (2 * Math.PI * i) / 8, startTime: now });
+                requestAnimationFrame(draw);
+            });
+        }
+
+        // Toast
+        function showToast(msg, type = 'info') {
+            const c = document.getElementById('toastContainer');
+            const t = document.createElement('div');
+            t.className = `toast toast-${type}`;
+            t.textContent = msg;
+            c.appendChild(t);
+            setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 3000);
+        }
+
+        // Instructions Panel
+        function showInstructions() { document.getElementById('instructionsPanel').classList.add('open'); }
+        function hideInstructions() { document.getElementById('instructionsPanel').classList.remove('open'); }
+
+        // Image Modal
+        function showImageGenModal() { document.getElementById('imageGenModal').classList.remove('hidden'); document.getElementById('imageGenPrompt').focus(); }
+        function hideImageGenModal() { document.getElementById('imageGenModal').classList.add('hidden'); document.getElementById('imageGenPrompt').value = ''; }
+
+        async function generateImage() {
+            const prompt = document.getElementById('imageGenPrompt').value.trim();
+            if (!prompt) { showToast('Enter a description', 'error'); return; }
+            hideImageGenModal();
+            addMessage(`Generate: ${prompt}`, 'user');
+            addLoadingMessage();
+            try {
+                const res = await fetch('/generate-image', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt }) });
+                const data = await res.json();
+                removeLoadingMessage();
+                addMessage(data.response, 'ai');
+                speak(data.response);
+            } catch(e) { removeLoadingMessage(); addMessage('Generation failed.', 'ai'); }
+        }
+
+        // Chat UI
+        function addMessage(content, sender = 'user') {
+            const chat = document.getElementById('chatHistory');
+            const w = document.createElement('div');
+            w.className = sender === 'user' ? 'slide-in' : 'fade-in';
+            w.innerHTML = sender === 'user' ?
+                `<div class="flex items-start gap-3 justify-end mb-4"><div class="max-w-[80%] rounded-2xl px-4 py-2.5" style="background: var(--bg-secondary); color: var(--text-primary);">${escapeHtml(content)}</div></div>` :
+                `<div class="flex items-start gap-3 mb-4"><div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style="background: linear-gradient(135deg, #f59e0b, #d97706);"><img src="{{ url_for('static', filename='pichu.png') }}" class="w-6 h-6 object-contain rounded-full"/></div><div class="max-w-[80%] rounded-2xl px-4 py-2.5" style="background: rgba(245,158,11,0.1); color: var(--text-primary);">${content.replace(/\n/g, '<br>')}</div></div>`;
+            chat.appendChild(w);
+            lucide.createIcons();
+            chat.scrollTop = chat.scrollHeight;
+        }
+
+        function addLoadingMessage() {
+            const chat = document.getElementById('chatHistory');
+            const w = document.createElement('div');
+            w.id = 'loadingMsg';
+            w.className = 'fade-in';
+            w.innerHTML = `<div class="flex items-start gap-3 mb-4"><div class="w-8 h-8 rounded-full flex items-center justify-center" style="background: linear-gradient(135deg, #f59e0b, #d97706);"><img src="{{ url_for('static', filename='pichu.png') }}" class="w-6 h-6 object-contain rounded-full"/></div><div class="rounded-2xl px-4 py-2.5" style="background: rgba(245,158,11,0.1);"><span class="loading-dots">Thinking</span></div></div>`;
+            chat.appendChild(w);
+            chat.scrollTop = chat.scrollHeight;
+        }
+
+        function removeLoadingMessage() { const el = document.getElementById('loadingMsg'); if (el) el.remove(); }
+        function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+        function clearChat() {
+            document.getElementById('chatHistory').innerHTML = `<div class="flex items-start gap-3 mb-4"><div class="w-8 h-8 rounded-full flex items-center justify-center" style="background: linear-gradient(135deg, #f59e0b, #d97706);"><img src="{{ url_for('static', filename='pichu.png') }}" class="w-6 h-6 object-contain rounded-full"/></div><div class="text-sm" style="color: var(--text-secondary);">Chat cleared!</div></div>`;
+            lucide.createIcons();
+        }
+
+        // Send Message
+        async function sendMessage(msg, hasImage = false) {
+            if (!msg.trim() && !hasImage) return;
+            addMessage(msg, 'user');
+            addLoadingMessage();
+            try {
+                let response;
+                if (hasImage && selectedImageFile) {
+                    const fd = new FormData();
+                    fd.append('image', selectedImageFile);
+                    const res = await fetch('/upload', { method: 'POST', body: fd });
+                    const data = await res.json();
+                    response = data.response;
+                } else {
+                    const res = await fetch('/ask', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: msg }) });
+                    const data = await res.json();
+                    response = data.response;
+                }
+                removeLoadingMessage();
+                addMessage(response, 'ai');
+                speak(response);
+            } catch(e) { removeLoadingMessage(); addMessage('Error connecting to backend.', 'ai'); showToast('Connection error!', 'error'); }
+            removeImage();
+        }
+
+        function sendSuggestion(text) {
+            hideInstructions();
+            document.getElementById('chatInput').value = text;
+            sendMessage(text);
+        }
+
+        // Voice Recognition
+        function initVoiceRecognition() {
+            const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SR) { document.getElementById('voiceBtn').style.opacity = '0.5'; document.getElementById('voiceBtn').style.pointerEvents = 'none'; return; }
+            recognition = new SR();
+            recognition.lang = 'en-IN';
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            recognition.onstart = () => { isListening = true; showVoiceViz(); };
+            recognition.onend = () => { isListening = false; hideVoiceViz(); };
+            recognition.onerror = (e) => { isListening = false; hideVoiceViz(); if (e.error !== 'no-speech') showToast('Voice error', 'error'); };
+            recognition.onresult = (e) => { if (e.results && e.results[0]) { const t = e.results[0][0].transcript; document.getElementById('chatInput').value = t; hideVoiceViz(); sendMessage(t); } };
+        }
+
+        function toggleVoice() {
+            if (!recognition) { showToast('Voice not supported', 'error'); return; }
+            if (isListening) recognition.stop(); else recognition.start();
+        }
+
+        function showVoiceViz() { document.getElementById('voiceViz').classList.remove('hidden'); }
+        function hideVoiceViz() { document.getElementById('voiceViz').classList.add('hidden'); }
+
+        // Image Handling
+        function triggerImageUpload() { hideInstructions(); document.getElementById('imageInput').click(); }
+        function handleImageSelect(e) {
+            const file = e.target.files[0];
+            if (!file || !file.type.startsWith('image/')) { showToast('Select an image', 'error'); return; }
+            selectedImageFile = file;
+            document.getElementById('imagePreview').src = URL.createObjectURL(file);
+            document.getElementById('imagePreviewContainer').classList.remove('hidden');
+            lucide.createIcons();
+            sendMessage('Analyze this image', true);
+        }
+        function removeImage() { selectedImageFile = null; document.getElementById('imageInput').value = ''; document.getElementById('imagePreviewContainer').classList.add('hidden'); }
+
+        // Text to Speech
+        function speak(text) {
+            if (!('speechSynthesis' in window)) return;
+            window.speechSynthesis.cancel();
+            const u = new SpeechSynthesisUtterance(text);
+            u.lang = 'en-IN';
+            u.rate = 1;
+            window.speechSynthesis.speak(u);
+        }
+
+        // Theme & Spark Toggle
+        function toggleTheme() {
+            isDarkMode = !isDarkMode;
+            document.body.classList.toggle('light-mode', !isDarkMode);
+            document.querySelector('#themeToggle i').setAttribute('data-lucide', isDarkMode ? 'sun' : 'moon');
+            lucide.createIcons();
+        }
+        function toggleSpark() {
+            sparkEnabled = !sparkEnabled;
+            document.querySelector('#sparkToggle i').setAttribute('data-lucide', sparkEnabled ? 'sparkles' : 'sparkles-off');
+            lucide.createIcons();
+            showToast(sparkEnabled ? 'Spark on' : 'Spark off');
+        }
+
+        // Init
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            initSpark();
+            startEntranceAnimation();
+            setTimeout(initVoiceRecognition, 500);
+
+            document.getElementById('sendBtn').addEventListener('click', () => { const v = document.getElementById('chatInput').value.trim(); if (v) { sendMessage(v); document.getElementById('chatInput').value = ''; } });
+            document.getElementById('chatInput').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); document.getElementById('sendBtn').click(); } });
+            document.getElementById('voiceBtn').addEventListener('click', toggleVoice);
+            document.getElementById('cancelVoiceBtn').addEventListener('click', () => { if (recognition && isListening) recognition.stop(); hideVoiceViz(); });
+            document.getElementById('imageInput').addEventListener('change', handleImageSelect);
+            document.getElementById('attachBtn').addEventListener('click', triggerImageUpload);
+            document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+            document.getElementById('sparkToggle').addEventListener('click', toggleSpark);
+            document.getElementById('clearChatBtn').addEventListener('click', () => { clearChat(); showToast('Chat cleared'); });
+            document.getElementById('instructionsBtn').addEventListener('click', showInstructions);
+            document.getElementById('analyzeImageBtn').addEventListener('click', triggerImageUpload);
+            document.getElementById('generateImageBtn').addEventListener('click', showImageGenModal);
+            document.addEventListener('click', (e) => { const p = document.getElementById('instructionsPanel'); if (p.classList.contains('open') && !p.contains(e.target) && !e.target.closest('#instructionsBtn')) hideInstructions(); });
+            setTimeout(() => document.getElementById('chatInput').focus(), 1200);
+        });
+    </script>
+</body>
+</html>
